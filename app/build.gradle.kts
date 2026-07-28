@@ -50,7 +50,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.activity:activity-ktx:1.9.0")
 
-    // ✅ Fragment KTX - IMPORTANT for viewModels delegate
+    // Fragment KTX
     implementation("androidx.fragment:fragment-ktx:1.8.2")
 
     // Navigation
@@ -70,6 +70,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // ✅ Google Play Services - LOCATION
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
