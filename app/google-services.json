@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "821772111865",
+    "project_id": "kakrwai-rider",
+    "storage_bucket": "kakrwai-rider.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:821772111865:android:87c9d1c1404532d2083728",
+        "android_client_info": {
+          "package_name": "com.gr.kakarwairider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZRWeXevOqWn6o0lY0KxwRIheDswyaTk4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:821772111865:android:3b77dc5d5b732d50083728",
+        "android_client_info": {
+          "package_name": "com.kr.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZRWeXevOqWn6o0lY0KxwRIheDswyaTk4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
