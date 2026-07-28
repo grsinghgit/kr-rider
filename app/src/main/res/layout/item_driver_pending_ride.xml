@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvRideId"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Ride #ABC123"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PENDING"
+                android:textSize="12sp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/bg_status_driver_ride" />
+
+        </LinearLayout>
+
+        <!-- Pickup -->
+        <TextView
+            android:id="@+id/tvPickup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📍 Connaught Place, Delhi"
+            android:textSize="12sp"
+            android:textColor="@color/grey"
+            android:layout_marginTop="4dp" />
+
+        <!-- Destination -->
+        <TextView
+            android:id="@+id/tvDestination"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🏁 India Gate, Delhi"
+            android:textSize="12sp"
+            android:textColor="@color/grey" />
+
+        <!-- User Phone -->
+        <TextView
+            android:id="@+id/tvUserPhone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📞 +91 9876543210"
+            android:textSize="12sp"
+            android:textColor="@color/blue"
+            android:layout_marginTop="2dp" />
+
+        <!-- Fare + Time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/tvFare"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="💰 ₹236"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary" />
+
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10:30 AM"
+                android:textSize="12sp"
+                android:textColor="@color/grey" />
+
+        </LinearLayout>
+
+        <!-- ✅ DISTANCE ROW -->
+        <TextView
+            android:id="@+id/tvDistance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📍 5.2km + 8.3km = 13.5km"
+            android:textSize="11sp"
+            android:textColor="@color/grey"
+            android:layout_marginTop="2dp"
+            android:visibility="gone" />
+
+        <!-- Call + Route Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCall"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="📞 Call"
+                app:cornerRadius="6dp"
+                android:textSize="10sp"
+                app:backgroundTint="@color/blue"
+                android:textColor="@color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRoute"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="🗺️ Route"
+                app:cornerRadius="6dp"
+                android:textSize="10sp"
+                app:backgroundTint="@color/primary"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+        <!-- ✅ ARRIVED AT PICKUP BUTTON -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnArrivedPickup"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="📍 Arrived at Pickup"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/blue"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Action Buttons (Accept/Reject) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAccept"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="✅ Accept"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                app:backgroundTint="@color/green"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReject"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="❌ Reject"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                app:backgroundTint="@color/red"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- ✅ PIN ENTRY + SUBMIT (ARRIVED_PICKUP) -->
+        <LinearLayout
+            android:id="@+id/llPinEntry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPin"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:hint="Enter PIN"
+                android:inputType="number"
+                android:maxLength="4"
+                android:textSize="14sp"
+                android:background="@android:drawable/editbox_background"
+                android:padding="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSubmitPin"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="✅ Submit"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                app:backgroundTint="@color/green"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+        <!-- ✅ DESTINATION REACHED BUTTON -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnArrivedDestination"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="📍 Arrived at Destination"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/orange"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- ✅ COMPLETE PIN ENTRY -->
+        <LinearLayout
+            android:id="@+id/llCompletePinEntry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCompletePin"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:hint="Enter Complete PIN"
+                android:inputType="number"
+                android:maxLength="4"
+                android:textSize="14sp"
+                android:background="@android:drawable/editbox_background"
+                android:padding="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSubmitCompletePin"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="✅ Complete"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                app:backgroundTint="@color/green"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

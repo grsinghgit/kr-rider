@@ -8,6 +8,7 @@ import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
@@ -21,54 +22,84 @@ class DriverLocationService : Service() {
     private val TAG = "DriverLocationService"
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
+    private lateinit var locationRequest: LocationRequest
 
     private val db = FirebaseFirestore.getInstance()
     private var driverId: String? = null
     private var isLocationUpdatesStarted = false
-    private var isServiceDestroyed = false
+    private var isFirstLocationUpdate = true
 
     companion object {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "driver_location_channel"
-        private const val UPDATE_INTERVAL = 10000L
-        private const val FASTEST_INTERVAL = 5000L
+        private const val UPDATE_INTERVAL = 10000L  // 10 seconds
+        private const val FASTEST_INTERVAL = 5000L   // 5 seconds
     }
 
     override fun onCreate() {
         super.onCreate()
-        android.util.Log.d(TAG, "🔵 onCreate: Service created")
+        Log.d(TAG, "🔵 onCreate: Service created")
+
+        // ✅ Check if notification permission is granted (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, "❌ Notification permission NOT granted!")
+            }
+        }
 
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification("🔄 Initializing..."))
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        isServiceDestroyed = false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        android.util.Log.d(TAG, "🟢 onStartCommand: Service started")
+        Log.d(TAG, "🟢 onStartCommand: Service started")
 
         driverId = intent?.getStringExtra("driverId")
-        android.util.Log.d(TAG, "📌 driverId = $driverId")
+        Log.d(TAG, "📌 driverId from intent = $driverId")
 
         if (driverId.isNullOrEmpty()) {
-            android.util.Log.e(TAG, "❌ driverId is null! Stopping service.")
+            Log.e(TAG, "❌ driverId is null or empty! Stopping service.")
             stopSelf()
             return START_NOT_STICKY
         }
 
-        // ✅ Update notification
+        Log.d(TAG, "✅ driverId set to $driverId")
         updateNotification("🟢 Online - Tracking...")
 
-        // ✅ Update Firestore status
+        // ✅ Update Firestore status to ONLINE
         updateDriverStatus("ONLINE", true)
 
+        // ✅ Build Location Request
+        locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            UPDATE_INTERVAL
+        )
+            .setMinUpdateIntervalMillis(FASTEST_INTERVAL)
+            .build()
+
+        // ✅ Location Callback
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 val location = locationResult.lastLocation
-                location?.let {
-                    android.util.Log.d(TAG, "📍 Location: ${it.latitude}, ${it.longitude}")
-                    updateDriverLocation(it)
+                if (location != null) {
+                    Log.d(TAG, "📍 Location: ${location.latitude}, ${location.longitude}")
+                    updateDriverLocation(location)
                     updateNotification("🟢 Online - Tracking...")
+                } else {
+                    Log.w(TAG, "⚠️ Location is null")
+                    updateNotification("⚠️ Searching for GPS...")
+                }
+            }
+
+            override fun onLocationAvailability(availability: LocationAvailability) {
+                if (availability.isLocationAvailable) {
+                    Log.d(TAG, "✅ Location available")
+                    updateNotification("🟢 Online - GPS Active")
+                } else {
+                    Log.w(TAG, "⚠️ GPS Not Available")
+                    updateNotification("⚠️ GPS Not Available")
                 }
             }
         }
@@ -80,22 +111,18 @@ class DriverLocationService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startLocationUpdates() {
+        Log.d(TAG, "🚀 startLocationUpdates: Starting...")
+
+        // ✅ Check Location Permission
         if (ActivityCompat.checkSelfPermission(
                 this,
                 android.Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            android.util.Log.e(TAG, "❌ Location permission NOT granted!")
+            Log.e(TAG, "❌ Location permission NOT granted!")
             stopSelf()
             return
         }
-
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            UPDATE_INTERVAL
-        )
-            .setMinUpdateIntervalMillis(FASTEST_INTERVAL)
-            .build()
 
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
@@ -103,17 +130,24 @@ class DriverLocationService : Service() {
             Looper.getMainLooper()
         )
         isLocationUpdatesStarted = true
-        android.util.Log.d(TAG, "✅ Location updates started")
+        Log.d(TAG, "✅ Location updates requested")
+        updateNotification("🟢 Online - Tracking location...")
     }
 
     private fun updateDriverLocation(location: Location) {
-        val id = driverId ?: return
+        val id = driverId
+        if (id.isNullOrEmpty()) {
+            Log.e(TAG, "❌ driverId is null, cannot save location")
+            return
+        }
+
+        val lat = location.latitude
+        val lng = location.longitude
+
+        Log.d(TAG, "💾 Saving location for driver: $id")
 
         val data = hashMapOf(
-            "currentLocation" to com.google.firebase.firestore.GeoPoint(
-                location.latitude,
-                location.longitude
-            ),
+            "currentLocation" to com.google.firebase.firestore.GeoPoint(lat, lng),
             "updatedAt" to Timestamp.now(),
             "status" to "ONLINE",
             "isAvailable" to true
@@ -122,13 +156,25 @@ class DriverLocationService : Service() {
         db.collection("driver_locations")
             .document(id)
             .set(data, com.google.firebase.firestore.SetOptions.merge())
+            .addOnSuccessListener {
+                if (isFirstLocationUpdate) {
+                    Log.d(TAG, "✅✅✅ FIRST LOCATION SAVED! ✅✅✅")
+                    isFirstLocationUpdate = false
+                    updateNotification("✅ Online - Location Active")
+                } else {
+                    Log.d(TAG, "✅ Location updated successfully")
+                }
+            }
             .addOnFailureListener { e ->
-                android.util.Log.e(TAG, "❌ Failed to save location: ${e.message}")
+                Log.e(TAG, "❌ Failed to save location: ${e.message}")
+                updateNotification("⚠️ Location save failed")
             }
     }
 
     private fun updateDriverStatus(status: String, isAvailable: Boolean) {
         val id = driverId ?: return
+        Log.d(TAG, "📤 Updating driver status to $status")
+
         db.collection("driver_locations")
             .document(id)
             .update(
@@ -138,8 +184,35 @@ class DriverLocationService : Service() {
                     "updatedAt" to Timestamp.now()
                 )
             )
+            .addOnSuccessListener {
+                Log.d(TAG, "✅ Status updated to $status")
+            }
             .addOnFailureListener { e ->
-                android.util.Log.e(TAG, "❌ Status update failed: ${e.message}")
+                Log.e(TAG, "❌ Status update failed: ${e.message}")
+                // If document doesn't exist, create it
+                createDriverLocationDocument(status, isAvailable)
+            }
+    }
+
+    private fun createDriverLocationDocument(status: String, isAvailable: Boolean) {
+        val id = driverId ?: return
+        Log.d(TAG, "📝 Creating driver location document for: $id")
+
+        val data = hashMapOf(
+            "driverId" to id,
+            "status" to status,
+            "isAvailable" to isAvailable,
+            "updatedAt" to Timestamp.now()
+        )
+
+        db.collection("driver_locations")
+            .document(id)
+            .set(data)
+            .addOnSuccessListener {
+                Log.d(TAG, "✅ Driver location document created")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "❌ Failed to create document: ${e.message}")
             }
     }
 
@@ -167,7 +240,7 @@ class DriverLocationService : Service() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.notify(NOTIFICATION_ID, createNotification(message))
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "❌ Notification error: ${e.message}")
+            Log.e(TAG, "❌ Notification error: ${e.message}")
         }
     }
 
@@ -178,29 +251,31 @@ class DriverLocationService : Service() {
                 "Driver Location Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows driver online status"
+                description = "Shows driver online/offline status"
                 setShowBadge(true)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
+            Log.d(TAG, "✅ Notification channel created")
         }
     }
 
     override fun onDestroy() {
-        android.util.Log.d(TAG, "🔴 onDestroy: Service destroying")
-        isServiceDestroyed = true
+        Log.d(TAG, "🔴 onDestroy: Service destroying")
 
-        // Stop location updates
+        // ✅ Stop location updates
         try {
             if (::locationCallback.isInitialized && isLocationUpdatesStarted) {
                 fusedLocationClient.removeLocationUpdates(locationCallback)
+                Log.d(TAG, "✅ Location updates stopped")
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "❌ Error stopping: ${e.message}")
+            Log.e(TAG, "❌ Error stopping: ${e.message}")
         }
 
-        // Update status to OFFLINE
+        // ✅ Update status to OFFLINE
         driverId?.let {
+            Log.d(TAG, "📤 Updating status to OFFLINE")
             db.collection("driver_locations")
                 .document(it)
                 .update(
@@ -210,9 +285,28 @@ class DriverLocationService : Service() {
                         "updatedAt" to Timestamp.now()
                     )
                 )
+                .addOnSuccessListener {
+                    Log.d(TAG, "✅ Status updated to OFFLINE")
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "❌ Status update failed: ${e.message}")
+                }
         }
 
+        updateNotification("🔴 You are OFFLINE")
+
+        // ✅ Remove notification after delay
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try {
+                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.cancel(NOTIFICATION_ID)
+                Log.d(TAG, "🔔 Notification removed")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error removing notification: ${e.message}")
+            }
+        }, 3000)
+
         super.onDestroy()
-        android.util.Log.d(TAG, "🔴 onDestroy: Service destroyed")
+        Log.d(TAG, "🔴 onDestroy: Service destroyed")
     }
 }
