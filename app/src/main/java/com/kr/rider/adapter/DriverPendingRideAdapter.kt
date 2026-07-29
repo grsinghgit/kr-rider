@@ -169,16 +169,18 @@ class DriverPendingRideAdapter(
                     btnReject.visibility = View.VISIBLE
                     Log.d("PendingRideAdapter", "   ✅ Showing Accept/Reject")
                 }
-                "ACCEPTED", "STARTED" -> {
-                    tvStatus.text = if (ride.status == "ACCEPTED") "✅ Accepted" else "🚗 Started"
-                    tvStatus.setTextColor(
-                        if (ride.status == "ACCEPTED")
-                            context.getColor(R.color.green)
-                        else
-                            context.getColor(R.color.blue)
-                    )
-                    btnArrivedPickup.visibility = View.VISIBLE
-                    Log.d("PendingRideAdapter", "   ✅ Showing Arrived Pickup for ${ride.status}")
+                "ACCEPTED" -> {
+                    tvStatus.text = "✅ Accepted"
+                    tvStatus.setTextColor(context.getColor(R.color.green))
+                    btnArrivedPickup.visibility = View.GONE   // ❌ Hide on ACCEPTED
+                    Log.d("PendingRideAdapter", "   ✅ Accepted - waiting for STARTED")
+                }
+
+                "STARTED" -> {
+                    tvStatus.text = "🚗 Started"
+                    tvStatus.setTextColor(context.getColor(R.color.blue))
+                    btnArrivedPickup.visibility = View.VISIBLE   // ✅ Show on STARTED
+                    Log.d("PendingRideAdapter", "   ✅ Showing Arrived Pickup for STARTED")
                 }
                 "ARRIVED_PICKUP" -> {
                     tvStatus.text = "📍 Arrived at Pickup"
