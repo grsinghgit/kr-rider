@@ -91,7 +91,7 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Calculate Fare
+    // ✅ Calculate Fare - FIXED: No hardcoded fallback
     fun calculateFareForRide(
         rideId: String,
         driverId: String,
@@ -144,8 +144,21 @@ class DriverPendingRidesViewModel : ViewModel() {
                             return@addOnSuccessListener
                         }
 
-                        val perKmRate = areaDoc.getDouble("perKmRate") ?: 10.0
-                        val basePrice = areaDoc.getDouble("basePrice") ?: 30.0
+                        // ✅ Firestore se vehicle rates fetch karein — NO HARDCODED FALLBACK
+                        val vehicleRates = areaDoc.get("vehicleRates") as? Map<String, Any>
+                        val bikeRates = vehicleRates?.get("bike") as? Map<String, Any>
+
+                        val perKmRate = (bikeRates?.get("perKmRate") as? Number)?.toDouble() ?: 0.0
+                        val basePrice = (bikeRates?.get("basePrice") as? Number)?.toDouble() ?: 0.0
+
+                        Log.d(TAG, "📊 Firestore: basePrice=$basePrice, perKmRate=$perKmRate")
+
+                        if (basePrice == 0.0 || perKmRate == 0.0) {
+                            _errorMessage.value = "Vehicle rates not configured for this area"
+                            callback(false)
+                            return@addOnSuccessListener
+                        }
+
                         val distanceFare = totalDistance * perKmRate
                         val totalFare = basePrice + distanceFare
 
@@ -164,7 +177,7 @@ class DriverPendingRidesViewModel : ViewModel() {
                         db.collection("rides").document(rideId)
                             .update(updates)
                             .addOnSuccessListener {
-                                Log.d(TAG, "✅ Fare calculated: ₹$totalFare")
+                                Log.d(TAG, "✅ Fare calculated: ₹$totalFare (base=$basePrice, perKm=$perKmRate, dist=$totalDistance)")
                                 callback(true)
                             }
                             .addOnFailureListener { e ->
