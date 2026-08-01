@@ -98,7 +98,7 @@
 
         </LinearLayout>
 
-        <!-- ✅ DISTANCE ROW -->
+        <!-- Distance Row -->
         <TextView
             android:id="@+id/tvDistance"
             android:layout_width="match_parent"
@@ -142,7 +142,7 @@
 
         </LinearLayout>
 
-        <!-- ✅ ARRIVED AT PICKUP BUTTON -->
+        <!-- ✅ CALCULATE FARE BUTTON (DRIVER_ASSIGNED status par show) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -150,14 +150,14 @@
             android:layout_marginTop="4dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnArrivedPickup"
+                android:id="@+id/btnCalculateFare"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:text="📍 Arrived at Pickup"
+                android:layout_height="36dp"
+                android:text="💰 Calculate Fare"
                 app:cornerRadius="8dp"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                app:backgroundTint="@color/blue"
+                app:backgroundTint="@color/orange"
                 android:textColor="@color/white"
                 android:visibility="gone" />
 
@@ -198,7 +198,28 @@
 
         </LinearLayout>
 
-        <!-- ✅ PIN ENTRY + SUBMIT (ARRIVED_PICKUP) -->
+        <!-- Arrived at Pickup Button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnArrivedPickup"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="📍 Arrived at Pickup"
+                app:cornerRadius="8dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/blue"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- PIN Entry -->
         <LinearLayout
             android:id="@+id/llPinEntry"
             android:layout_width="match_parent"
@@ -232,7 +253,7 @@
 
         </LinearLayout>
 
-        <!-- ✅ DESTINATION REACHED BUTTON -->
+        <!-- Arrived Destination -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -253,7 +274,7 @@
 
         </LinearLayout>
 
-        <!-- ✅ COMPLETE PIN ENTRY -->
+        <!-- Complete PIN Entry -->
         <LinearLayout
             android:id="@+id/llCompletePinEntry"
             android:layout_width="match_parent"

@@ -24,7 +24,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class DriverPendingRideAdapter(
-    private var rides: List<RideModel>,
+    var rides: List<RideModel>,
+    private val onCalculateFare: (RideModel) -> Unit,
     private val onAccept: (RideModel) -> Unit,
     private val onReject: (RideModel) -> Unit,
     private val onArrivedPickup: (RideModel) -> Unit,
@@ -54,7 +55,6 @@ class DriverPendingRideAdapter(
         notifyDataSetChanged()
     }
 
-    // ✅ Fallback Function - Database location se open karein
     private fun openGoogleMapsWithDatabaseLocation(context: android.content.Context, ride: RideModel) {
         val driverId = ride.driverId
         if (driverId.isNullOrEmpty()) {
@@ -108,6 +108,7 @@ class DriverPendingRideAdapter(
         private val tvTime: TextView = itemView.findViewById(R.id.tvTime)
         private val tvUserPhone: TextView = itemView.findViewById(R.id.tvUserPhone)
         private val tvDistance: TextView = itemView.findViewById(R.id.tvDistance)
+        private val btnCalculateFare: MaterialButton = itemView.findViewById(R.id.btnCalculateFare)
         private val btnAccept: MaterialButton = itemView.findViewById(R.id.btnAccept)
         private val btnReject: MaterialButton = itemView.findViewById(R.id.btnReject)
         private val btnCall: MaterialButton = itemView.findViewById(R.id.btnCall)
@@ -126,12 +127,12 @@ class DriverPendingRideAdapter(
 
             Log.d("PendingRideAdapter", "📌 Binding: ${ride.rideId}, status: ${ride.status}")
 
-            // ✅ Set basic info
+            // Set basic info
             tvRideId.text = "Ride #${ride.rideId.takeLast(8)}"
             tvPickup.text = "📍 ${ride.pickup?.address ?: "N/A"}"
             tvDestination.text = "🏁 ${ride.destination?.address ?: "N/A"}"
 
-            // ✅ Show Fare with Distance Details
+            // Show Fare with Distance Details
             if (ride.fareCalculated && ride.totalFare > 0) {
                 tvFare.text = "💰 ₹${DistanceUtils.formatFareInt(ride.totalFare)}"
                 val pickupDist = DistanceUtils.formatDistance(ride.pickupDistance)
@@ -140,7 +141,7 @@ class DriverPendingRideAdapter(
                 tvDistance.text = "📍 ${pickupDist}km + ${tripDist}km = ${totalDist}km"
                 tvDistance.visibility = View.VISIBLE
             } else {
-                tvFare.text = "💰 Calculating..."
+                tvFare.text = "💰 Calculate Fare"
                 tvDistance.visibility = View.GONE
             }
 
@@ -150,9 +151,10 @@ class DriverPendingRideAdapter(
                 tvTime.text = dateFormat.format(it.toDate())
             }
 
-            // ✅ SAB BUTTONS PEHLE HIDE KARO
+            // Hide all buttons first
             btnAccept.visibility = View.GONE
             btnReject.visibility = View.GONE
+            btnCalculateFare.visibility = View.GONE
             btnArrivedPickup.visibility = View.GONE
             llPinEntry.visibility = View.GONE
             btnArrivedDestination.visibility = View.GONE
@@ -160,26 +162,51 @@ class DriverPendingRideAdapter(
             btnCall.visibility = View.VISIBLE
             btnRoute.visibility = View.VISIBLE
 
-            // ✅ STATUS KE HISAB SE BUTTONS SHOW KARO
+            // Status based UI
             when (ride.status) {
                 "DRIVER_ASSIGNED" -> {
                     tvStatus.text = "🔄 New Request"
                     tvStatus.setTextColor(context.getColor(R.color.orange))
-                    btnAccept.visibility = View.VISIBLE
-                    btnReject.visibility = View.VISIBLE
-                    Log.d("PendingRideAdapter", "   ✅ Showing Accept/Reject")
+
+                    if (ride.fareCalculated && ride.totalFare > 0) {
+                        btnCalculateFare.visibility = View.GONE
+                        btnAccept.visibility = View.VISIBLE
+                        btnReject.visibility = View.VISIBLE
+                        tvFare.text = "💰 ₹${DistanceUtils.formatFareInt(ride.totalFare)}"
+                    } else {
+                        btnCalculateFare.visibility = View.VISIBLE
+                        btnCalculateFare.isEnabled = true
+                        btnAccept.visibility = View.GONE
+                        btnReject.visibility = View.GONE
+                    }
+                    Log.d("PendingRideAdapter", "   ✅ Showing Calculate Fare")
                 }
                 "ACCEPTED" -> {
                     tvStatus.text = "✅ Accepted"
                     tvStatus.setTextColor(context.getColor(R.color.green))
-                    btnArrivedPickup.visibility = View.GONE   // ❌ Hide on ACCEPTED
-                    Log.d("PendingRideAdapter", "   ✅ Accepted - waiting for STARTED")
-                }
+                    btnArrivedPickup.visibility = View.GONE
+                    btnAccept.visibility = View.GONE
+                    btnReject.visibility = View.GONE
+                    btnCalculateFare.visibility = View.GONE
 
+                    // ✅ Safety check to ensure fare doesn't get lost if database returned 0
+                    val fareToShow = if (ride.totalFare > 0) ride.totalFare else rides.find { it.rideId == ride.rideId }?.totalFare ?: 0.0
+                    tvFare.text = "💰 ₹${DistanceUtils.formatFareInt(fareToShow)}"
+                    tvFare.setTextColor(context.getColor(R.color.green))
+                    Log.d("PendingRideAdapter", "   ✅ Accepted - Fare: ₹$fareToShow")
+                }
                 "STARTED" -> {
                     tvStatus.text = "🚗 Started"
                     tvStatus.setTextColor(context.getColor(R.color.blue))
-                    btnArrivedPickup.visibility = View.VISIBLE   // ✅ Show on STARTED
+                    btnArrivedPickup.visibility = View.VISIBLE
+                    btnAccept.visibility = View.GONE
+                    btnReject.visibility = View.GONE
+                    btnCalculateFare.visibility = View.GONE
+
+                    // ✅ Safety check to ensure fare doesn't get lost if database returned 0
+                    val fareToShow = if (ride.totalFare > 0) ride.totalFare else rides.find { it.rideId == ride.rideId }?.totalFare ?: 0.0
+                    tvFare.text = "💰 ₹${DistanceUtils.formatFareInt(fareToShow)}"
+                    tvFare.setTextColor(context.getColor(R.color.blue))
                     Log.d("PendingRideAdapter", "   ✅ Showing Arrived Pickup for STARTED")
                 }
                 "ARRIVED_PICKUP" -> {
@@ -211,7 +238,15 @@ class DriverPendingRideAdapter(
                 }
             }
 
-            // ✅ CALL BUTTON
+            // Calculate Fare Button
+            btnCalculateFare.setOnClickListener {
+                Log.d("PendingRideAdapter", "💰 Calculate Fare: ${ride.rideId}")
+                btnCalculateFare.isEnabled = false
+                btnCalculateFare.text = "⏳ Calculating..."
+                onCalculateFare(ride)
+            }
+
+            // Call Button
             btnCall.setOnClickListener {
                 val phone = ride.userPhone
                 if (phone.isEmpty()) {
@@ -225,7 +260,7 @@ class DriverPendingRideAdapter(
                 context.startActivity(intent)
             }
 
-            // ✅ ROUTE BUTTON
+            // Route Button
             btnRoute.setOnClickListener {
                 val driverId = ride.driverId
                 if (driverId.isNullOrEmpty()) {
@@ -243,20 +278,17 @@ class DriverPendingRideAdapter(
                     return@setOnClickListener
                 }
 
-                // ✅ Check Location Permission
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(context, "❌ Location permission not granted", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
-                // ✅ Get Device's Current Location
                 val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
                 fusedLocationClient.lastLocation
                     .addOnSuccessListener { location ->
                         if (location == null) {
-                            // ✅ Fallback: Database location use karein
                             Toast.makeText(context, "⚠️ Using saved location", Toast.LENGTH_SHORT).show()
                             openGoogleMapsWithDatabaseLocation(context, ride)
                             return@addOnSuccessListener
@@ -269,7 +301,6 @@ class DriverPendingRideAdapter(
                         Log.d("RouteButton", "📍 Pickup: ($pickupLat, $pickupLng)")
                         Log.d("RouteButton", "📍 Destination: ($destLat, $destLng)")
 
-                        // ✅ Open Google Maps with 3 stops
                         val uri = Uri.parse(
                             "https://www.google.com/maps/dir/$driverLat,$driverLng/$pickupLat,$pickupLng/$destLat,$destLng"
                         )
@@ -277,31 +308,30 @@ class DriverPendingRideAdapter(
                         context.startActivity(intent)
                     }
                     .addOnFailureListener {
-                        // ✅ Fallback: Database location
                         Toast.makeText(context, "⚠️ Failed to get live location, using saved location", Toast.LENGTH_SHORT).show()
                         openGoogleMapsWithDatabaseLocation(context, ride)
                     }
             }
 
-            // ✅ ACCEPT
+            // Accept
             btnAccept.setOnClickListener {
                 Log.d("PendingRideAdapter", "✅ Accept: ${ride.rideId}")
                 onAccept(ride)
             }
 
-            // ✅ REJECT
+            // Reject
             btnReject.setOnClickListener {
                 Log.d("PendingRideAdapter", "❌ Reject: ${ride.rideId}")
                 onReject(ride)
             }
 
-            // ✅ ARRIVED AT PICKUP
+            // Arrived at Pickup
             btnArrivedPickup.setOnClickListener {
                 Log.d("PendingRideAdapter", "📍 Arrived Pickup: ${ride.rideId}")
                 onArrivedPickup(ride)
             }
 
-            // ✅ SUBMIT PICKUP PIN
+            // Submit Pickup PIN
             btnSubmitPin.setOnClickListener {
                 val enteredPin = etPin.text.toString().trim()
                 if (enteredPin.length != 4) {
@@ -313,13 +343,13 @@ class DriverPendingRideAdapter(
                 etPin.text?.clear()
             }
 
-            // ✅ ARRIVED AT DESTINATION
+            // Arrived at Destination
             btnArrivedDestination.setOnClickListener {
                 Log.d("PendingRideAdapter", "📍 Arrived Destination: ${ride.rideId}")
                 onArrivedDestination(ride)
             }
 
-            // ✅ SUBMIT COMPLETE PIN
+            // Submit Complete PIN
             btnSubmitCompletePin.setOnClickListener {
                 val enteredPin = etCompletePin.text.toString().trim()
                 if (enteredPin.length != 4) {

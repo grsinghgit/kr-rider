@@ -59,60 +59,21 @@ class DriverPendingRidesFragment : Fragment() {
         viewModel.loadPendingRides(driverId!!)
     }
 
+    override fun onResume() {
+        super.onResume()
+        driverId?.let { viewModel.loadPendingRides(it) }
+    }
+
     private fun setupRecyclerView() {
         adapter = DriverPendingRideAdapter(
             rides = emptyList(),
+            onCalculateFare = { ride ->
+                Log.d(TAG, "💰 Calculate Fare: ${ride.rideId}")
+                calculateFareForRide(ride)
+            },
             onAccept = { ride ->
                 Log.d(TAG, "✅ Accept: ${ride.rideId}")
-
-                val driverId = driverId ?: ""
-                val areaId = ride.areaId
-                val pickupLat = ride.pickup?.lat ?: 0.0
-                val pickupLng = ride.pickup?.lng ?: 0.0
-                val destLat = ride.destination?.lat ?: 0.0
-                val destLng = ride.destination?.lng ?: 0.0
-
-                if (areaId.isNotEmpty() && pickupLat != 0.0 && destLat != 0.0) {
-                    // ✅ Step 1: Calculate Fare
-                    viewModel.calculateFareForRide(
-                        rideId = ride.rideId,
-                        driverId = driverId,
-                        areaId = areaId,
-                        pickupLat = pickupLat,
-                        pickupLng = pickupLng,
-                        destLat = destLat,
-                        destLng = destLng
-                    ) { fareSuccess ->
-                        if (fareSuccess) {
-                            // ✅ Step 2: Fetch Driver Details
-                            viewModel.fetchDriverDetails(driverId) { name, phone, vehicle, vehicleNumber ->
-                                // ✅ Step 3: Update Ride with Driver Details + Status
-                                viewModel.updateRideWithDriverDetails(
-                                    rideId = ride.rideId,
-                                    status = "ACCEPTED",
-                                    driverName = name,
-                                    driverPhone = phone,
-                                    driverVehicle = vehicle,
-                                    driverVehicleNumber = vehicleNumber
-                                ) { success ->
-                                    if (success) {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            "✅ Ride Accepted!",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    } else {
-                                        Toast.makeText(requireContext(), "❌ Failed to update ride", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        } else {
-                            Toast.makeText(requireContext(), "❌ Failed to calculate fare", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } else {
-                    Toast.makeText(requireContext(), "❌ Missing location data", Toast.LENGTH_SHORT).show()
-                }
+                acceptRide(ride)
             },
             onReject = { ride ->
                 Log.d(TAG, "❌ Reject: ${ride.rideId}")
@@ -124,9 +85,7 @@ class DriverPendingRidesFragment : Fragment() {
             },
             onArrivedPickup = { ride ->
                 Log.d(TAG, "📍 Arrived at pickup: ${ride.rideId}")
-
                 val pickupPin = (1000..9999).random().toString()
-
                 viewModel.updateRideWithPin(
                     rideId = ride.rideId,
                     status = "ARRIVED_PICKUP",
@@ -142,7 +101,6 @@ class DriverPendingRidesFragment : Fragment() {
             },
             onSubmitPin = { ride, enteredPin ->
                 Log.d(TAG, "🔑 Submit PIN: ${ride.rideId}, PIN: $enteredPin")
-
                 if (ride.pickupPin == enteredPin) {
                     viewModel.updateRideStatus(ride.rideId, "ON_THE_WAY") { success ->
                         if (success) {
@@ -157,9 +115,7 @@ class DriverPendingRidesFragment : Fragment() {
             },
             onArrivedDestination = { ride ->
                 Log.d(TAG, "📍 Destination Reached: ${ride.rideId}")
-
                 val completePin = (1000..9999).random().toString()
-
                 viewModel.updateRideWithCompletePin(
                     rideId = ride.rideId,
                     status = "DESTINATION_REACHED",
@@ -174,7 +130,6 @@ class DriverPendingRidesFragment : Fragment() {
             },
             onSubmitCompletePin = { ride, enteredPin ->
                 Log.d(TAG, "🔑 Complete PIN: ${ride.rideId}, PIN: $enteredPin")
-
                 viewModel.completeRideWithPin(
                     rideId = ride.rideId,
                     enteredPin = enteredPin
@@ -182,7 +137,7 @@ class DriverPendingRidesFragment : Fragment() {
                     if (success) {
                         Toast.makeText(
                             requireContext(),
-                            "✅ Ride Completed!",
+                            "✅ Ride Completed! Fare: ₹${DistanceUtils.formatFareInt(ride.totalFare)}",
                             Toast.LENGTH_LONG
                         ).show()
                     } else {
@@ -195,13 +150,101 @@ class DriverPendingRidesFragment : Fragment() {
         recyclerView.adapter = adapter
     }
 
+    private fun calculateFareForRide(ride: RideModel) {
+        val driverId = driverId ?: ""
+        val areaId = ride.areaId
+        val pickupLat = ride.pickup?.lat ?: 0.0
+        val pickupLng = ride.pickup?.lng ?: 0.0
+        val destLat = ride.destination?.lat ?: 0.0
+        val destLng = ride.destination?.lng ?: 0.0
+
+        if (areaId.isEmpty() || pickupLat == 0.0 || destLat == 0.0) {
+            Toast.makeText(requireContext(), "❌ Missing location data", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewModel.calculateFareForRide(
+            rideId = ride.rideId,
+            driverId = driverId,
+            areaId = areaId,
+            pickupLat = pickupLat,
+            pickupLng = pickupLng,
+            destLat = destLat,
+            destLng = destLng
+        ) { success ->
+            if (success) {
+                Toast.makeText(
+                    requireContext(),
+                    "✅ Fare calculated: ₹${DistanceUtils.formatFareInt(ride.totalFare)}",
+                    Toast.LENGTH_LONG
+                ).show()
+                // ✅ Refresh list immediately (Yahan sahi hai, kyunki calculate par naya data chahiye)
+                driverId?.let { viewModel.loadPendingRides(it) }
+            } else {
+                Toast.makeText(requireContext(), "❌ Failed to calculate fare", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun acceptRide(ride: RideModel) {
+        val driverId = driverId ?: ""
+
+        if (!ride.fareCalculated || ride.totalFare <= 0) {
+            Toast.makeText(requireContext(), "⚠️ Please calculate fare first!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // ✅ Store fare value locally
+        val acceptedFare = ride.totalFare
+
+        viewModel.fetchDriverDetails(driverId) { name, phone, vehicle, vehicleNumber ->
+            viewModel.updateRideWithDriverDetails(
+                rideId = ride.rideId,
+                status = "ACCEPTED",
+                driverName = name,
+                driverPhone = phone,
+                driverVehicle = vehicle,
+                driverVehicleNumber = vehicleNumber
+            ) { success ->
+                if (success) {
+                    // ❌ REMOVED: driverId?.let { viewModel.loadPendingRides(it) } (No Firebase fetch)
+
+                    // ✅ Update Local List (So UI stays perfect without flickering)
+                    val currentList = adapter.rides.toMutableList()
+                    val index = currentList.indexOfFirst { it.rideId == ride.rideId }
+                    if (index != -1) {
+                        val updatedRide = currentList[index].copy(
+                            status = "ACCEPTED",
+                            driverName = name,
+                            driverPhone = phone,
+                            driverVehicle = vehicle,
+                            driverVehicleNumber = vehicleNumber,
+                            // Fare values remain exactly the same as calculated!
+                            totalFare = acceptedFare,
+                            fareCalculated = true
+                        )
+                        currentList[index] = updatedRide
+                        adapter.updateRides(currentList) // Update adapter with local data
+                    }
+
+                    Toast.makeText(
+                        requireContext(),
+                        "✅ Ride Accepted! Fare: ₹${DistanceUtils.formatFareInt(acceptedFare)}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(requireContext(), "❌ Failed to update ride", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     private fun setupObservers() {
         viewModel.rides.observe(viewLifecycleOwner, Observer { rides ->
             Log.d(TAG, "📋 LiveData update: ${rides.size} rides")
             rides.forEach {
-                Log.d(TAG, "   - ${it.rideId}: ${it.status}")
+                Log.d(TAG, "   - ${it.rideId}: ${it.status}, Fare: ₹${it.totalFare}")
             }
-
             adapter.updateRides(rides)
             tvEmpty.visibility = if (rides.isEmpty()) View.VISIBLE else View.GONE
         })
@@ -217,6 +260,6 @@ class DriverPendingRidesFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // ViewModel will clean up listener
+        viewModel.clearError()
     }
 }

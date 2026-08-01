@@ -26,7 +26,6 @@ class DriverPendingRidesViewModel : ViewModel() {
 
     private var listener: com.google.firebase.firestore.ListenerRegistration? = null
 
-    // ✅ Load rides with real-time listener
     fun loadPendingRides(driverId: String) {
         if (driverId.isEmpty()) {
             _errorMessage.value = "Driver ID is empty"
@@ -65,7 +64,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Update ride status
     fun updateRideStatus(rideId: String, status: String, callback: (Boolean) -> Unit) {
         if (rideId.isEmpty()) {
             _errorMessage.value = "Ride ID is empty"
@@ -91,7 +89,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Calculate Fare - FIXED: No hardcoded fallback
     fun calculateFareForRide(
         rideId: String,
         driverId: String,
@@ -144,7 +141,6 @@ class DriverPendingRidesViewModel : ViewModel() {
                             return@addOnSuccessListener
                         }
 
-                        // ✅ Firestore se vehicle rates fetch karein — NO HARDCODED FALLBACK
                         val vehicleRates = areaDoc.get("vehicleRates") as? Map<String, Any>
                         val bikeRates = vehicleRates?.get("bike") as? Map<String, Any>
 
@@ -177,7 +173,7 @@ class DriverPendingRidesViewModel : ViewModel() {
                         db.collection("rides").document(rideId)
                             .update(updates)
                             .addOnSuccessListener {
-                                Log.d(TAG, "✅ Fare calculated: ₹$totalFare (base=$basePrice, perKm=$perKmRate, dist=$totalDistance)")
+                                Log.d(TAG, "✅ Fare calculated: ₹$totalFare")
                                 callback(true)
                             }
                             .addOnFailureListener { e ->
@@ -199,7 +195,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Fetch Driver Details from drivers collection
     fun fetchDriverDetails(
         driverId: String,
         callback: (String, String, String, String) -> Unit
@@ -233,7 +228,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Update Ride with Driver Details
     fun updateRideWithDriverDetails(
         rideId: String,
         status: String,
@@ -261,7 +255,7 @@ class DriverPendingRidesViewModel : ViewModel() {
         db.collection("rides").document(rideId)
             .update(updates)
             .addOnSuccessListener {
-                Log.d(TAG, "✅ Ride updated with driver details")
+                Log.d(TAG, "✅ Ride updated with driver details: $rideId → $status")
                 callback(true)
             }
             .addOnFailureListener { e ->
@@ -271,7 +265,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Update ride with PIN
     fun updateRideWithPin(
         rideId: String,
         status: String,
@@ -305,7 +298,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Update ride with Complete PIN
     fun updateRideWithCompletePin(
         rideId: String,
         status: String,
@@ -337,7 +329,6 @@ class DriverPendingRidesViewModel : ViewModel() {
             }
     }
 
-    // ✅ Complete Ride with PIN
     fun completeRideWithPin(
         rideId: String,
         enteredPin: String,
