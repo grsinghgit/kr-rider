@@ -40,16 +40,35 @@ class DriverLocationService : Service() {
         super.onCreate()
         Log.d(TAG, "🔵 onCreate: Service created")
 
-        // ✅ Check if notification permission is granted (Android 13+)
+        // ✅ SAFETY CHECK 1: Android 14+ ke liye FOREGROUND_SERVICE_LOCATION permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // Android 14
+            if (checkSelfPermission(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, "❌ FOREGROUND_SERVICE_LOCATION permission NOT granted! Stopping service.")
+                stopSelf()
+                return
+            }
+        }
+
+        // ✅ SAFETY CHECK 2: Notification permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "❌ Notification permission NOT granted!")
+                Log.e(TAG, "⚠️ Notification permission NOT granted! (Notification won't show)")
             }
         }
 
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification("🔄 Initializing..."))
+
+        // ✅ Start foreground with notification
+        try {
+            startForeground(NOTIFICATION_ID, createNotification("🔄 Initializing..."))
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to start foreground: ${e.message}")
+            stopSelf()
+            return
+        }
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
@@ -124,14 +143,19 @@ class DriverLocationService : Service() {
             return
         }
 
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            Looper.getMainLooper()
-        )
-        isLocationUpdatesStarted = true
-        Log.d(TAG, "✅ Location updates requested")
-        updateNotification("🟢 Online - Tracking location...")
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper()
+            )
+            isLocationUpdatesStarted = true
+            Log.d(TAG, "✅ Location updates requested")
+            updateNotification("🟢 Online - Tracking location...")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to request location updates: ${e.message}")
+            stopSelf()
+        }
     }
 
     private fun updateDriverLocation(location: Location) {
@@ -225,10 +249,13 @@ class DriverLocationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // 🔥 FIX: Use R.drawable.ic_notification (not mipmap) for better Android 12+ compatibility
+        // Agar aapke paas notification icon nahi hai, toh R.mipmap.ic_launcher use kar sakte hain,
+        // lekin ek simple white icon drawable folder mein daalna better hai.
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("🚗 Kr Driver")
             .setContentText(message)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.mipmap.ic_launcher) // ✅ Change to R.drawable.ic_notification if available
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setOngoing(true)
